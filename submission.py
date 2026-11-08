@@ -58,13 +58,14 @@ def _fit_line(c: Canvas, value: str, max_width: float, font_name: str, font_size
     return text
 
 
-def _cover(client: str, cases: int, app_url: str = '', video_url: str = '') -> bytes:
+def _cover(client: str, cases: int, app_url: str = '', video_url: str = '', author: str = 'Nachly Acosta', course: str = 'Bootcamp Analista SOC Nivel 2', organizers: str = 'DOJO y WOSEC Panamá') -> bytes:
     output = BytesIO()
     c = Canvas(output, pagesize=A4, pageCompression=1)
     width, height = A4
     m = 2.05 * cm
     inner_width = width - 2*m
     c.setTitle('SOC Investigator - Informe final')
+    c.setAuthor(author)
     c.setFillColor(DARK)
     c.rect(0, 0, width, height, fill=1, stroke=0)
     c.setFillColor(PANEL)
@@ -72,55 +73,62 @@ def _cover(client: str, cases: int, app_url: str = '', video_url: str = '') -> b
 
     c.setStrokeColor(PURPLE)
     c.setLineWidth(4)
-    c.line(m, height-4.5*cm, m+3.1*cm, height-4.5*cm)
+    c.line(m, height-3.85*cm, m+3.1*cm, height-3.85*cm)
     c.setFillColor(PURPLE)
-    c.setFont(BOLD, 13)
-    c.drawString(m, height-5.95*cm, 'SOC INVESTIGATOR')
+    c.setFont(BOLD, 12)
+    c.drawString(m, height-4.9*cm, 'SOC INVESTIGATOR')
 
     c.setFillColor(WHITE)
-    c.setFont(BOLD, 21)
-    c.drawString(m, height-8.2*cm, 'Investigación de posibles')
-    c.drawString(m, height-9.22*cm, 'incidentes de seguridad')
+    c.setFont(BOLD, 20)
+    c.drawString(m, height-6.25*cm, 'Investigación de posibles')
+    c.drawString(m, height-7.2*cm, 'incidentes de seguridad')
     c.setFillColor(MUTED)
-    c.setFont(FONT, 10.5)
-    c.drawString(m, height-10.45*cm, 'Informe ejecutivo + informe técnico')
-    c.drawString(m, height-11.05*cm, 'Correlación de eventos y evidencias trazables desde Excel')
+    c.setFont(FONT, 10)
+    c.drawString(m, height-8.2*cm, 'Informe ejecutivo + informe técnico')
+    c.drawString(m, height-8.85*cm, 'Correlación de eventos y evidencias trazables desde Excel')
 
     c.setStrokeColor(colors.HexColor('#4B4568'))
     c.setLineWidth(.75)
-    c.line(m, height-12.30*cm, width-m, height-12.30*cm)
+    c.line(m, height-9.55*cm, width-m, height-9.55*cm)
 
     def heading(y: float, label: str):
         c.setFillColor(PURPLE)
-        c.setFont(BOLD, 9.2)
+        c.setFont(BOLD, 8.7)
         c.drawString(m, y, label)
 
-    heading(height-13.45*cm, 'CLIENTE / ESCENARIO')
-    c.setFillColor(WHITE)
-    c.setFont(FONT, 9.3)
-    name = (client or '').strip() or 'Organización cliente - Estocolmo, Suecia'
-    c.drawString(m, height-14.15*cm, _fit_line(c, name, inner_width, FONT, 9.3))
+    def detail(y: float, value: str, size: float = 9.4):
+        c.setFillColor(WHITE)
+        c.setFont(FONT, size)
+        c.drawString(m, y, _fit_line(c, (value or '').strip(), inner_width, FONT, size))
 
-    heading(height-15.35*cm, 'ALCANCE')
+    heading(height-10.45*cm, 'PRESENTADO POR')
+    detail(height-11.10*cm, author or 'No indicado', 10.6)
+
+    heading(height-12.05*cm, 'PROGRAMA DE FORMACIÓN')
+    detail(height-12.70*cm, course or 'No indicado')
+
+    heading(height-13.65*cm, 'COMUNIDADES FORMADORAS')
+    detail(height-14.30*cm, organizers or 'No indicadas')
+
+    heading(height-15.25*cm, 'CLIENTE / ESCENARIO')
+    detail(height-15.90*cm, client or 'Organización cliente - Estocolmo, Suecia')
+
+    heading(height-16.85*cm, 'ALCANCE')
+    detail(height-17.5*cm, f'{cases} casos correlacionados (hipótesis por validar)', 9.1)
     c.setFillColor(MUTED)
-    c.setFont(FONT, 9.1)
-    c.drawString(m, height-16.05*cm, f'{cases} casos correlacionados (hipótesis por validar)')
-    c.drawString(m, height-16.75*cm, 'No es una confirmación forense de compromiso')
+    c.setFont(FONT, 8.4)
+    c.drawString(m, height-18.08*cm, 'Sin confirmación forense automática de compromiso')
 
-    heading(height-18.05*cm, 'APLICACIÓN WEB')
+    heading(height-19.05*cm, 'APLICACIÓN WEB')
     app_link = _verified_http_url(app_url) or DEFAULT_APP_URL
-    c.setFillColor(WHITE)
-    c.setFont(BOLD, 9.1)
-    c.drawString(m, height-18.75*cm, _fit_line(c, app_link, inner_width, BOLD, 9.1))
-    c.linkURL(app_link, (m, height-19.0*cm, width-m, height-18.45*cm), relative=0, thickness=0)
+    detail(height-19.70*cm, app_link, 9)
+    c.linkURL(app_link, (m, height-20.0*cm, width-m, height-19.45*cm), relative=0, thickness=0)
 
     video = _verified_http_url(video_url)
     if video:
-        heading(height-20.05*cm, 'VIDEO DEMOSTRATIVO')
-        c.setFillColor(WHITE)
-        c.setFont(FONT, 8.7)
-        c.drawString(m, height-20.7*cm, _fit_line(c, video, inner_width, FONT, 8.7))
-        c.linkURL(video, (m, height-20.9*cm, width-m, height-20.45*cm), relative=0, thickness=0)
+        heading(height-20.70*cm, 'VIDEO DEMOSTRATIVO')
+        detail(height-21.35*cm, video, 8.4)
+        c.linkURL(video, (m, height-21.60*cm, width-m, height-21.12*cm), relative=0, thickness=0)
 
     c.setFillColor(MUTED)
     c.setFont(FONT, 8)
@@ -136,15 +144,17 @@ def _cover(client: str, cases: int, app_url: str = '', video_url: str = '') -> b
 
 
 def build_submission_pdf(executive: bytes, technical: bytes, client: str = 'Organización cliente - Estocolmo, Suecia',
-                         cases: int = 0, app_url: str = '', video_url: str = '') -> bytes:
+                         cases: int = 0, app_url: str = '', video_url: str = '', author: str = 'Nachly Acosta',
+                         course: str = 'Bootcamp Analista SOC Nivel 2', organizers: str = 'DOJO y WOSEC Panamá') -> bytes:
     """Portada + informe ejecutivo + informe técnico, en ese orden."""
     writer = PdfWriter()
-    for payload in (_cover(client, cases, app_url, video_url), executive, technical):
+    for payload in (_cover(client, cases, app_url, video_url, author, course, organizers), executive, technical):
         reader = PdfReader(BytesIO(payload))
         for page in reader.pages:
             writer.add_page(page)
     writer.add_metadata({
         '/Title': 'SOC Investigator - Entrega final',
+        '/Author': author,
         '/Subject': 'Investigación preliminar de posibles incidentes SIEM',
         '/Keywords': 'SOC, SIEM, investigación, seguridad, informe ejecutivo, informe técnico'
     })

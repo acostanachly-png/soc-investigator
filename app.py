@@ -225,6 +225,14 @@ with tab_dash:
 
 with tab_reports:
     client = st.text_input("Nombre del cliente en los informes", value="Organización cliente - Estocolmo, Suecia", max_chars=120)
+    st.markdown("#### Datos académicos para los informes")
+    meta_a, meta_b = st.columns(2)
+    with meta_a:
+        author = st.text_input("Nombre de quien presenta el proyecto", value="Nachly Acosta", max_chars=100)
+        course = st.text_input("Nombre del curso", value="Bootcamp Analista SOC Nivel 2", max_chars=140)
+    with meta_b:
+        organizers = st.text_input("Comunidades que imparten el curso", value="DOJO y WOSEC Panamá", max_chars=140)
+    st.caption("Estos datos se incorporarán a la portada del PDF unificado y a los encabezados de ambos informes.")
     st.markdown("**Dos documentos distintos:** el ejecutivo habla de impacto y decisiones; el técnico conserva metodología, reglas, evidencias y filas de origen.")
     with st.expander("🤖 IA gratuita · Gemini interpreta evidencias y ayuda a redactar"):
         st.info("**Sin pagos:** Gemini 3.5 Flash-Lite puede utilizarse dentro de la cuota gratuita de Google AI Studio. La disponibilidad y los límites dependen del proyecto. El motor SOC y los PDF funcionan incluso sin IA.")
@@ -281,8 +289,8 @@ with tab_reports:
                 st.write("**Qué falta verificar:**", suggestion["que_falta_confirmar"])
                 st.caption("Eventos citados: " + (", ".join(suggestion["referencias"]) or "No citó eventos verificables"))
     try:
-        b1 = build_pdf("ejecutivo", summary, findings, limitations, client=client, ai_commentary=st.session_state.get("ai_exec", ""), cases=cases)
-        b2 = build_pdf("tecnico", summary, findings, limitations, client=client, ai_commentary=st.session_state.get("ai_tech", ""), cases=cases)
+        b1 = build_pdf("ejecutivo", summary, findings, limitations, client=client, ai_commentary=st.session_state.get("ai_exec", ""), cases=cases, author=author, course=course, organizers=organizers)
+        b2 = build_pdf("tecnico", summary, findings, limitations, client=client, ai_commentary=st.session_state.get("ai_tech", ""), cases=cases, author=author, course=course, organizers=organizers)
         left, right = st.columns(2)
         with left:
             st.download_button("📥 Descargar informe EJECUTIVO (PDF)", data=b1, file_name="informe_ejecutivo_SOC.pdf", mime="application/pdf", use_container_width=True)
@@ -292,7 +300,7 @@ with tab_reports:
         st.caption("Este PDF reúne una portada, el resumen ejecutivo y el informe técnico. Copia su enlace de Drive al formulario del curso después de subirlo.")
         url_app = st.text_input("Dirección pública de la aplicación (opcional, una vez publicada)", key="app_url", placeholder="https://tu-proyecto.streamlit.app")
         url_video = st.text_input("Enlace al video demostrativo (opcional)", key="video_url", placeholder="https://...")
-        bundled_pdf = build_submission_pdf(b1, b2, client=client, cases=len(cases), app_url=url_app, video_url=url_video)
+        bundled_pdf = build_submission_pdf(b1, b2, client=client, cases=len(cases), app_url=url_app, video_url=url_video, author=author, course=course, organizers=organizers)
         st.download_button("📦 Descargar PDF FINAL UNIFICADO", data=bundled_pdf, file_name="SOC_Investigator_Entrega_Final.pdf", mime="application/pdf", type="primary", use_container_width=True)
     except Exception as exc:
         st.error(f"Error generando PDF: {exc}")

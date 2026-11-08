@@ -76,7 +76,7 @@ def _table(rows, widths, styles, header=True):
     return table
 
 
-def build_pdf(kind: str, summary: dict, findings: list[dict], limitations: list[str], client: str = "Organización cliente - Estocolmo, Suecia", ai_commentary: str = "", cases: list[dict] | None = None) -> bytes:
+def build_pdf(kind: str, summary: dict, findings: list[dict], limitations: list[str], client: str = "Organización cliente - Estocolmo, Suecia", ai_commentary: str = "", cases: list[dict] | None = None, author: str = "Nachly Acosta", course: str = "Bootcamp Analista SOC Nivel 2", organizers: str = "DOJO y WOSEC Panamá") -> bytes:
     if kind not in {"ejecutivo", "tecnico"}:
         raise ValueError("kind debe ser 'ejecutivo' o 'tecnico'")
     cases = cases or []
@@ -88,6 +88,8 @@ def build_pdf(kind: str, summary: dict, findings: list[dict], limitations: list[
     story.extend([
         _p(title, styles["title"]),
         _p(f"Cliente: {client} | Fecha de emisión: {datetime.now().strftime('%d/%m/%Y')}", styles["muted"]),
+        _p(f"Elaborado por: {(author or 'No indicado').strip()} | Curso: {(course or 'No indicado').strip()}", styles["small"]),
+        _p(f"Comunidades formadoras: {(organizers or 'No indicadas').strip()}", styles["small"]),
         _p("Origen: registros exportados desde un SIEM, recibidos en un archivo Excel. Alcance limitado al archivo suministrado.", styles["small"]),
         _p("Estado de la evaluación: INDICIOS AUTOMÁTICOS. No es una confirmación forense de compromiso.", styles["muted"]),
     ])
