@@ -1,0 +1,23 @@
+# Nunca subir credenciales ni datos del cliente
+.streamlit/secrets.toml
+.env
+.env.*
+!*.example
+*.pem
+*.key
+# Archivos fuente y reportes de clientes
+/datos_curso/
+/demo_informes/
+*.xlsx
+*.xls
+*.csv
+*.pdf
+# Excepción: archivo sintético visible para demostración
+!ejemplo_logs_sinteticos.xlsx
+# Entornos y temporales
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+.DS_Store
