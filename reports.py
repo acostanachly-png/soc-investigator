@@ -24,22 +24,22 @@ if os.path.isfile(DEJAVU) and os.path.isfile(DEJAVU_BOLD):
     pdfmetrics.registerFont(TTFont("DejaVuCustomBold", DEJAVU_BOLD))
     FONT, BOLD = "DejaVuCustom", "DejaVuCustomBold"
 
-NAVY = colors.HexColor("#101A2C")
-BLUE = colors.HexColor("#2563EB")
+NAVY = colors.HexColor("#17132E")
+BLUE = colors.HexColor("#8B5CF6")
 MUTED = colors.HexColor("#58677A")
-PALE = colors.HexColor("#EAF1FF")
+PALE = colors.HexColor("#F4F0FF")
 
 
 def _styles():
     base = getSampleStyleSheet()
     return {
         "title": ParagraphStyle("soc-title", parent=base["Title"], fontName=BOLD, fontSize=18, leading=25, textColor=NAVY, spaceAfter=13),
-        "h2": ParagraphStyle("soc-h2", parent=base["Heading2"], fontName=BOLD, fontSize=11, leading=15, textColor=NAVY, spaceBefore=15, spaceAfter=7),
+        "h2": ParagraphStyle("soc-h2", parent=base["Heading2"], fontName=BOLD, fontSize=11, leading=15, textColor=NAVY, spaceBefore=15, spaceAfter=7, keepWithNext=True),
         "body": ParagraphStyle("soc-body", parent=base["BodyText"], fontName=FONT, fontSize=8.8, leading=14, spaceAfter=8),
         "small": ParagraphStyle("soc-small", parent=base["BodyText"], fontName=FONT, fontSize=7.6, leading=11, spaceAfter=5),
         "muted": ParagraphStyle("soc-muted", parent=base["BodyText"], fontName=FONT, fontSize=8.3, leading=13, textColor=MUTED, spaceAfter=7),
         "header": ParagraphStyle("soc-th", parent=base["BodyText"], fontName=BOLD, fontSize=8, leading=11, textColor=colors.white),
-        "cell": ParagraphStyle("soc-td", parent=base["BodyText"], fontName=FONT, fontSize=7.7, leading=11),
+        "cell": ParagraphStyle("soc-td", parent=base["BodyText"], fontName=FONT, fontSize=7.5, leading=11),
     }
 
 
@@ -54,7 +54,7 @@ def _foot(c, doc):
     c.line(1.7 * cm, 1.45 * cm, w - 1.7 * cm, 1.45 * cm)
     c.setFont(FONT, 7)
     c.setFillColor(MUTED)
-    c.drawString(1.7 * cm, 1.14 * cm, "SOC Analyst | Revisión preliminar de seguridad | Uso académico")
+    c.drawString(1.7 * cm, 1.14 * cm, "SOC Investigator | Investigación preliminar | Uso académico")
     c.drawRightString(w - 1.7 * cm, 1.14 * cm, f"Página {doc.page}")
     c.restoreState()
 
@@ -66,12 +66,12 @@ def _table(rows, widths, styles, header=True):
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("LEFTPADDING", (0, 0), (-1, -1), 8),
         ("RIGHTPADDING", (0, 0), (-1, -1), 8),
-        ("TOPPADDING", (0, 0), (-1, -1), 7),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
         ("LINEBELOW", (0, -1), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
     ]
     if header:
-        ts.extend([("BACKGROUND", (0, 0), (-1, 0), NAVY), ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F6F8FC")])])
+        ts.extend([("BACKGROUND", (0, 0), (-1, 0), NAVY), ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F7F5FC")])])
     table.setStyle(TableStyle(ts))
     return table
 
@@ -94,10 +94,11 @@ def build_pdf(kind: str, summary: dict, findings: list[dict], limitations: list[
     story.append(_p("Resumen de resultados", styles["h2"]))
     story.append(_p(f"Casos de investigación multiseñal: {len(cases)}. Son hipótesis, no incidentes confirmados.", styles["body"]))
     stats = [
-        ["Registros", "Hallazgos", "Hallazgos altos/críticos", "Usuarios", "IP origen"],
+        ["Registros", "Alertas individuales", "Alertas altas/críticas", "Usuarios", "IP origen"],
         [str(summary.get("registros", 0)), str(summary.get("hallazgos", 0)), str(summary.get("altos", 0)), str(summary.get("usuarios", 0)), str(summary.get("ip_origen", 0))],
     ]
     story.append(_table(stats, [3.45 * cm] * 5, styles))
+    story.append(_p("Los casos correlacionados y las alertas individuales pueden compartir registros; no deben sumarse como incidentes distintos.", styles["small"]))
     if kind == "ejecutivo":
         story.append(_p("Conclusión preliminar", styles["h2"]))
         if findings:
@@ -108,11 +109,11 @@ def build_pdf(kind: str, summary: dict, findings: list[dict], limitations: list[
             story.append(_p("Investigaciones prioritarias", styles["h2"]))
             case_rows = [["Caso / criticidad", "Descripción", "Qué falta comprobar"]]
             for c in cases:
-                case_rows.append([f"{c['id']} | {c['criticidad']}", c['titulo'], c['recomendacion'][:150]])
+                case_rows.append([f"{c['id']} | {c['criticidad']}", c['titulo'], c['recomendacion']])
             story.append(_table(case_rows, [3.5 * cm, 6.1 * cm, 7.65 * cm], styles))
             story.append(_p("Estos escenarios pueden representar distintos incidentes o actividades autorizadas. El número definitivo requiere investigación y validación humana.", styles["body"]))
         counts = Counter((f["categoria"], f["criticidad"]) for f in findings)
-        story.append(_p("Qué se observó", styles["h2"]))
+        story.append(_p("Qué se observó en las alertas individuales", styles["h2"]))
         if counts:
             rows = [["Tipo de señal", "Nivel", "Detecciones"]] + [[cat, sev, str(n)] for (cat, sev), n in counts.items()]
             story.append(_table(rows, [8.0 * cm, 5.0 * cm, 4.25 * cm], styles))
@@ -131,20 +132,26 @@ def build_pdf(kind: str, summary: dict, findings: list[dict], limitations: list[
         story.append(_p("Metodología y alcance", styles["h2"]))
         story.append(_p("Se leyeron las filas del Excel, se mapearon columnas de tiempo, usuario, IP, evento y otros campos cuando estaban disponibles, y se aplicaron reglas deterministas. Se correlacionaron inicios fallidos/exitosos por identidad y ventana temporal. Cada hallazgo incluye filas originales como referencia auditable.", styles["body"]))
         story.append(_p("Casos correlacionados y evidencia primaria", styles["h2"]))
+        story.append(_p("En las tablas se muestran eventos de muestra. Para cada caso se conservan las referencias a todas las filas del Excel enumeradas en el texto; la evidencia completa puede consultarse en la aplicación.", styles["small"]))
         if not cases:
             story.append(_p("No se identificaron cadenas multiseñal con las reglas activas.", styles["body"]))
         for c in cases:
             story.append(_p(f"{c['id']} | {c['titulo']} | {c['criticidad']}", styles["h2"]))
             story.append(_p(f"Estado: {c['estado']} | Grado de certeza: {c['confianza']}", styles["small"]))
             story.append(_p(f"Correlación: {c['justificacion']}", styles["body"]))
-            story.append(_p(f"Evidencia: {len(c['filas'])} filas originales. Filas de Excel: {', '.join(map(str,c['filas'][:35]))}{' ...' if len(c['filas']) > 35 else ''}", styles["small"]))
+            story.append(_p(f"Referencias: {len(c['filas'])} filas originales. Filas de Excel: {', '.join(map(str,c['filas'][:35]))}{' ...' if len(c['filas']) > 35 else ''}", styles["small"]))
             events = (c['evidencias'][:6] + c['evidencias'][-6:]) if len(c['evidencias']) > 12 else c['evidencias']
             if events:
+                story.append(_p(f"Muestra de evidencia: {len(events)} de {len(c['evidencias'])} eventos relacionados. Las referencias completas están arriba.", styles["small"]))
                 matrix = [["Fila / ID / hora", "Cuenta e IP / host", "Evento, destino y proceso"]]
                 for event in events:
-                    matrix.append([f"{event['excel_row']} | {event.get('log_id','')} | {event['timestamp'][11:19]}",
-                                   f"{event['user']} | {event['src_ip']} | {event['host']}",
-                                   f"{event['event_id']}: {event['event'][:83]} | {event['dest_host'][:35]} | {event['command'][:82]}"])
+                    desc = " | ".join(filter(None, [str(event.get("event_id", "")) + ": " + str(event.get("event", "")), str(event.get("dest_host", "")), str(event.get("command", ""))]))
+                    # Limitar un extracto individual no significa eliminar la referencia: el evento completo permanece en Excel.
+                    if len(desc) > 390:
+                        desc = desc[:390] + " ... [extracto; consultar Excel]"
+                    matrix.append([f"{event.get('excel_row', '')} | {event.get('log_id','')} | {str(event.get('timestamp',''))[11:19]}",
+                                   " | ".join(filter(None, [str(event.get('user', '')), str(event.get('src_ip', '')), str(event.get('host', ''))])),
+                                   desc])
                 story.append(_table(matrix, [4.0*cm,5.8*cm,7.45*cm], styles))
             story.append(_p(f"Siguiente verificación: {c['recomendacion']}", styles["body"]))
         story.append(_p("Alertas individuales complementarias", styles["h2"]))
@@ -160,12 +167,16 @@ def build_pdf(kind: str, summary: dict, findings: list[dict], limitations: list[
             story.extend(content)
             records = f["evidencias"][:12]
             if records:
+                story.append(_p(f"Muestra de eventos: {len(records)} de {len(f['evidencias'])} registros relacionados.", styles["small"]))
                 matrix = [["Fila / fecha", "Usuario / IP / equipo", "Evento / ID / comando"]]
                 for e in records:
+                    desc = " | ".join(filter(None, [str(e.get('evento', '')), "ID: " + str(e.get('id_evento', '')), str(e.get('comando', ''))]))
+                    if len(desc) > 390:
+                        desc = desc[:390] + " ... [extracto; consultar Excel]"
                     matrix.append([
-                        f"{e['fila']} | {e['fecha'][:25]}",
-                        f"{e['usuario']} | {e['ip']} | {e['equipo']} → {e['destino']}",
-                        f"{e['evento'][:110]} | ID: {e['id_evento']} | {e['comando'][:85]}",
+                        f"{e.get('fila', '')} | {str(e.get('fecha', ''))[:25]}",
+                        " | ".join(filter(None, [str(e.get('usuario', '')), str(e.get('ip', '')), str(e.get('equipo', '')), str(e.get('destino', ''))])),
+                        desc,
                     ])
                 story.append(_table(matrix, [3.7 * cm, 5.7 * cm, 7.85 * cm], styles))
             story.append(Spacer(1, 0.18 * cm))
