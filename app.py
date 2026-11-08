@@ -19,11 +19,11 @@ st.set_page_config(page_title="SOC Investigator | Análisis de logs", page_icon=
 st.markdown("""
 <style>
 .stApp { background: #0b1020; color: #e5ebf5; }
-[data-testid="stSidebar"] { background: #101a2e; }
-[data-testid="stMetric"] { background: #152238; padding: 15px 18px; border: 1px solid #334763; border-radius: 13px; }
+[data-testid="stSidebar"] { background: #141126; }
+[data-testid="stMetric"] { background: #1e1b36; padding: 15px 18px; border: 1px solid #373052; border-radius: 13px; }
 h1, h2, h3 { color: #f8fafc !important; }
-[data-testid="stFileUploader"] { border: 1px dashed #4560a6; border-radius: 12px; padding: 12px; }
-.hero {border:1px solid #2e4365; background: linear-gradient(110deg,#101e37,#172e53); border-radius:18px;padding:24px 30px;margin-bottom:20px;}
+[data-testid="stFileUploader"] { border: 1px dashed #8b5cf6; border-radius: 12px; padding: 12px; }
+.hero {border:1px solid #473579; background: linear-gradient(110deg,#171330,#2c2056); border-radius:18px;padding:24px 30px;margin-bottom:20px;}
 .hero h1{font-size:2.25rem;margin:0 0 10px 0;}
 .hero p{color:#d0ddf2; margin:0;}
 </style>
@@ -110,6 +110,7 @@ if clicked:
                                              "limitations": limitations, "summary": summarize(logs, findings), "cases": cases}
             st.session_state["ai_exec"] = ""
             st.session_state["ai_tech"] = ""
+            st.session_state["ai_cases"] = {}
         except Exception as exc:
             st.error(f"Error durante el análisis: {exc}")
 
@@ -150,6 +151,11 @@ with tab_cases:
             st.write("**Justificación:**", case["justificacion"])
             st.write("**Certeza:**", case["confianza"])
             st.write("**Acción recomendada:**", case["recomendacion"])
+            suggestion = st.session_state.get("ai_cases", {}).get(case["id"])
+            if suggestion:
+                st.info("🤖 **Interpretación asistida por IA (borrador):** " + suggestion["interpretacion"])
+                st.write("**Qué falta confirmar:**", suggestion["que_falta_confirmar"])
+                st.caption("Referencias citadas por la IA (validadas contra este caso): " + (", ".join(suggestion["referencias"]) or "Ninguna"))
             st.caption("Filas del Excel: " + ", ".join(map(str, case["filas"])))
             st.dataframe(pd.DataFrame(case["evidencias"]), use_container_width=True, hide_index=True)
     st.download_button("Descargar casos de investigación (JSON)", data=json.dumps(cases, ensure_ascii=False, indent=2), file_name="casos_correlacionados.json", mime="application/json")
@@ -220,26 +226,60 @@ with tab_dash:
 with tab_reports:
     client = st.text_input("Nombre del cliente en los informes", value="Organización cliente - Estocolmo, Suecia", max_chars=120)
     st.markdown("**Dos documentos distintos:** el ejecutivo habla de impacto y decisiones; el técnico conserva metodología, reglas, evidencias y filas de origen.")
-    with st.expander("🤖 Redacción asistida por IA (opcional, requiere clave API)"):
-        st.info("La detección y los PDF funcionan SIN IA ni pago. Para IA cada usuario debe facilitar su propia clave temporal. Solo se envían agregados y descripciones resumidas; no se envían logs completos. No utilices datos reales sin autorización.")
-        api_key = st.text_input("Tu clave API OpenAI para esta sesión (no se guarda en archivos)", type="password", value="")
-        model_name = st.text_input("Modelo de texto disponible en tu cuenta", value="gpt-4.1-mini", max_chars=80)
-        permission = st.checkbox("Confirmo que tengo autorización para enviar estos resúmenes a un proveedor externo")
-        if st.button("Generar narrativas para ambos informes", disabled=not (api_key and permission), type="secondary"):
+    with st.expander("🤖 IA gratuita · Gemini interpreta evidencias y ayuda a redactar"):
+        st.info("**Sin pagos:** Gemini 3.5 Flash-Lite puede utilizarse dentro de la cuota gratuita de Google AI Studio. La disponibilidad y los límites dependen del proyecto. El motor SOC y los PDF funcionan incluso sin IA.")
+        st.caption("Privacidad: se envían a Gemini únicamente estadísticas, tipos de eventos y referencias minimizadas; no se envía el Excel completo ni IP, usuarios, rutas o comandos literales. En el nivel gratuito, Google puede utilizar el contenido para mejorar sus productos. Usa solo datos académicos o autorizados.")
+        def cloud_secret(name):
             try:
-                from ai_helper import ai_rewrite
-                with st.spinner("Redactando sobre evidencias ya calculadas..."):
-                    st.session_state["ai_exec"] = ai_rewrite(api_key, model_name, summary, findings, limitations, "ejecutivo", cases=cases)
-                    st.session_state["ai_tech"] = ai_rewrite(api_key, model_name, summary, findings, limitations, "tecnico", cases=cases)
-                st.success("Texto de IA preparado. Revísalo antes de entregar.")
-            except Exception as exc:
-                st.error(f"No se pudo usar la API. Los PDF pueden generarse sin IA. Detalle: {exc}")
+                return str(st.secrets.get(name, "")).strip()
+            except Exception:
+                return ""
+        server_key = cloud_secret("GEMINI_API_KEY")
+        server_pin = cloud_secret("SOC_AI_PIN")
+        if server_key and server_pin:
+            import hmac
+            input_pin = st.text_input("Código de acceso a la IA (facilitado por quien administra la aplicación)", type="password", key="soc_gemini_pin")
+            unlocked = bool(input_pin) and hmac.compare_digest(input_pin, server_pin)
+            api_key = server_key if unlocked else ""
+            st.caption("La clave API está guardada en los secretos privados del servidor y no se muestra aquí. Se requiere un código para evitar agotar la cuota gratuita públicamente.")
+        else:
+            if server_key and not server_pin:
+                st.warning("Por seguridad, establece SOC_AI_PIN en Secrets de Streamlit antes de habilitar la clave compartida.")
+            api_key = st.text_input("Clave GRATUITA de Google AI Studio (solo durante esta sesión)", type="password", value="", key="gemini_key_user")
+            st.caption("Obtén una clave gratuita en https://aistudio.google.com/apikey . No la pegues en GitHub ni en el chat.")
+        permission = st.checkbox("Autorizo enviar exclusivamente el resumen minimizado a Gemini; entiendo sus límites gratuitos y el tratamiento de datos del nivel gratuito.", key="gemini_consent")
+        if st.button("✨ Interpretar los casos con Gemini (gratis)", disabled=not (api_key and permission), type="secondary"):
+            if st.session_state.get("ai_request_count", 0) >= 3:
+                st.warning("Alcanzaste el límite de 3 consultas en esta sesión para cuidar la cuota gratuita.")
+            else:
+                try:
+                    from ai_helper import ai_report
+                    with st.spinner("Gemini está interpretando un resumen minimizado de las evidencias..."):
+                        narrative = ai_report(api_key, "gemini-3.5-flash-lite", summary, findings, cases)
+                    st.session_state["ai_exec"] = narrative["ejecutivo"]
+                    st.session_state["ai_tech"] = narrative["tecnico"]
+                    st.session_state["ai_cases"] = {c["id"]: c for c in narrative["casos"]}
+                    st.session_state["ai_request_count"] = st.session_state.get("ai_request_count", 0) + 1
+                    st.success("Interpretaciones generadas. Verifica cada afirmación con los eventos antes de entregar.")
+                except Exception as exc:
+                    st.error(f"La IA no respondió. El análisis SOC y los PDF siguen disponibles. Motivo: {exc}")
     if st.session_state.get("ai_exec"):
-        st.markdown("**Resumen elaborado con IA para directivos (revisar):**")
+        st.markdown("**🤖 Resumen ejecutivo asistido por IA (borrador, requiere revisión):**")
         st.write(st.session_state["ai_exec"])
     if st.session_state.get("ai_tech"):
-        with st.expander("Texto técnico sugerido por IA"):
+        with st.expander("🤖 Interpretación técnica asistida por IA"):
             st.write(st.session_state["ai_tech"])
+    if st.session_state.get("ai_cases"):
+        st.markdown("#### 🤖 Interpretación caso por caso · Evidencias citadas")
+        st.caption("Las referencias se verifican contra los eventos del caso; el contenido redactado por la IA requiere validación humana.")
+        for case in cases:
+            suggestion = st.session_state["ai_cases"].get(case["id"])
+            if not suggestion:
+                continue
+            with st.expander(f"{case['id']} · {case['titulo']}"):
+                st.write("**Interpretación:**", suggestion["interpretacion"])
+                st.write("**Qué falta verificar:**", suggestion["que_falta_confirmar"])
+                st.caption("Eventos citados: " + (", ".join(suggestion["referencias"]) or "No citó eventos verificables"))
     try:
         b1 = build_pdf("ejecutivo", summary, findings, limitations, client=client, ai_commentary=st.session_state.get("ai_exec", ""), cases=cases)
         b2 = build_pdf("tecnico", summary, findings, limitations, client=client, ai_commentary=st.session_state.get("ai_tech", ""), cases=cases)
